@@ -1,0 +1,125 @@
+﻿@page "/chat-contact"
+@* @page "/chat-contact/{ContactId}" *@
+
+@using Microsoft.AspNetCore.SignalR.Client
+
+<style>
+	/* Estilo do conteúdo para garantir que o rodapé não sobreponha o conteúdo */
+	.content {
+		padding-bottom: 100px; /* Espaço para o rodapé fixo */
+		box-sizing: border-box; /* Garante que o padding seja considerado no tamanho total */
+	}
+
+	/* MudPaper fixo no rodapé */
+	.fixed-footer {
+		position: fixed;
+		bottom: 0;
+		left: -15px;
+		width: 100%;
+		background-color: white; /* Ajuste conforme necessário */
+		z-index: 10; /* Garante que o MudPaper fique acima de outros elementos */
+		padding: 10px 0;
+		box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2); /* Um leve sombreado para destaque */
+	}
+
+		/* Ajuste para a largura do MudTextField */
+		.fixed-footer .mud-textfield {
+			flex-grow: 1;
+		}
+
+
+		/*Balão de conversa*/
+
+	/* Container da mensagem */
+	.message-container {
+		display: flex;
+		flex-direction: row;
+		margin-bottom: 15px;
+		justify-content: flex-start; /* Alinha à esquerda, pode mudar conforme necessário */
+	}
+
+	/* Estilo do balão de conversa */
+	.message-bubble {
+		position: relative;
+		max-width: 70%; /* Limita a largura do balão */
+		padding: 10px;
+		border-radius: 15px;
+		background-color: #f1f0f0; /* Cor do balão */
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Sombra para dar mais destaque */
+	}
+
+		/* "Ponta" do balão */
+		.message-bubble::after {
+			content: '';
+			position: absolute;
+			bottom: -10px; /* Ajusta a posição da ponta */
+			left: 20px; /* Ajusta a posição da ponta */
+			width: 0;
+			height: 0;
+			border-left: 10px solid transparent;
+			border-right: 10px solid transparent;
+			border-top: 10px solid #f1f0f0; /* Cor da ponta */
+		}
+
+	/* Mensagens do usuário à direita */
+	.message-container.user-message {
+		justify-content: flex-end; /* Alinha à direita para mensagens do usuário */
+	}
+
+		.message-container.user-message .message-bubble {
+			background-color: #007bff; /* Cor do balão do usuário */
+			color: white; /* Cor do texto */
+		}
+
+	/* Personalização adicional: se a conversa tiver outro estilo */
+	.message-container.admin-message .message-bubble {
+		background-color: #f1f0f0; /* Cor do balão do administrador */
+	}
+
+</style>
+
+@foreach (var message in _messages)
+{
+	<div class="d-flex flex-row my-4 message-container">
+		<div class="message-bubble">
+			<MudText Typo="Typo.body2"
+			         Style="padding: 15px; background-color: var(--mud-palette-background-grey); border-radius: 5px;">
+				@message
+			</MudText>
+		</div>
+	</div>
+}
+
+<div class="content">
+	<MudPaper Elevation="15" Class="d-flex flex-row px-2 mx-4 fixed-footer">
+		<MudTextField T="string" Placeholder="Enter your message..." DisableUnderLine="true" Class="mx-4"
+					  @bind-Value="_currentMessage" For="@(()=> _currentMessage)" />
+		<MudButton OnClick="() => SubmitAsync(_currentMessage)" StartIcon="@Icons.Material.Outlined.Send" Color="Color.Primary" ButtonType="ButtonType.Button"></MudButton>
+	</MudPaper>
+</div>
+
+@code {
+	[CascadingParameter] public required HubConnection HubConnection { get; set; }
+	private string _currentMessage;
+	private string _contactId;
+
+	private readonly List<string> _messages = [];
+
+	protected override Task OnInitializedAsync()
+	{
+		HubConnection.On<string>("MessageReceived", message =>
+		{
+			_messages.Add(message);
+			InvokeAsync(StateHasChanged);
+		});
+
+		return Task.CompletedTask;
+	}
+
+	private async Task SubmitAsync(string message)
+	{
+		if (string.IsNullOrWhiteSpace(message)) return;
+		await HubConnection.SendAsync("SendMessage", message);
+		_currentMessage = string.Empty;
+	}
+}
