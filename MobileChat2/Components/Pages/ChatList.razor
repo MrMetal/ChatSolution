@@ -28,73 +28,50 @@
 		}
 
 
-		/*Balão de conversa*/
+	/*LEFT OR RIGHT*/
 
-	/* Container da mensagem */
-	.message-container {
-		display: flex;
-		flex-direction: row;
-		margin-bottom: 15px;
-		justify-content: flex-start; /* Alinha à esquerda, pode mudar conforme necessário */
-	}
-
-	/* Estilo do balão de conversa */
-	.message-bubble {
-		position: relative;
-		max-width: 70%; /* Limita a largura do balão */
+	.my-message {
+		text-align: right;
+		background-color: #d1e7dd;
 		padding: 10px;
-		border-radius: 15px;
-		background-color: #f1f0f0; /* Cor do balão */
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Sombra para dar mais destaque */
+		margin: 5px;
+		border-radius: 10px;
+		display: inline-block;
 	}
 
-		/* "Ponta" do balão */
-		.message-bubble::after {
-			content: '';
-			position: absolute;
-			bottom: -10px; /* Ajusta a posição da ponta */
-			left: 20px; /* Ajusta a posição da ponta */
-			width: 0;
-			height: 0;
-			border-left: 10px solid transparent;
-			border-right: 10px solid transparent;
-			border-top: 10px solid #f1f0f0; /* Cor da ponta */
-		}
-
-	/* Mensagens do usuário à direita */
-	.message-container.user-message {
-		justify-content: flex-end; /* Alinha à direita para mensagens do usuário */
-	}
-
-		.message-container.user-message .message-bubble {
-			background-color: #007bff; /* Cor do balão do usuário */
-			color: white; /* Cor do texto */
-		}
-
-	/* Personalização adicional: se a conversa tiver outro estilo */
-	.message-container.admin-message .message-bubble {
-		background-color: #f1f0f0; /* Cor do balão do administrador */
+	.their-message {
+		text-align: left;
+		background-color: #f8d7da;
+		padding: 10px;
+		margin: 5px;
+		border-radius: 10px;
+		display: inline-block;
 	}
 
 </style>
 
-@foreach (var message in _messages)
-{
-		<div class="d-flex flex-row my-4 message-container">
-			<div class="message-bubble">
-				<MudText Typo="Typo.body2"
-						 Style="padding: 15px; background-color: var(--mud-palette-background-grey); border-radius: 5px;">
-				@message
-				</MudText>
-			</div>
-		</div>
-}
+<MudList T="string" Dense="true">
+	@foreach (var chatMessage in _message)
+	{
+		<MudList T="string">
+			<MudListItem>
+				<ChildContent>
+
+					<div class="@(chatMessage.IsMine ? "my-message" : "their-message")">
+						<b>@chatMessage.From:</b> @chatMessage.Message
+					</div>
+
+				</ChildContent>              
+			</MudListItem>
+		</MudList>
+	}
+</MudList>
 
 <div class="content">
 	<MudPaper Elevation="15" Class="d-flex flex-row px-2 mx-4 fixed-footer">
 		<MudTextField T="string" Placeholder="Enter your message..." DisableUnderLine="true" Class="mx-4"
 					  @bind-Value="_currentMessage" For="@(()=> _currentMessage)" />
-		<MudButton OnClick="() => SubmitAsync(_currentMessage)" StartIcon="@Icons.Material.Outlined.Send" Color="Color.Primary" ButtonType="ButtonType.Button"></MudButton>
+		<MudButton OnClick="SendMessage" StartIcon="@Icons.Material.Outlined.Send" Color="Color.Primary" ButtonType="ButtonType.Button"></MudButton>
 	</MudPaper>
 </div>
 
@@ -102,24 +79,37 @@
 	[CascadingParameter] public required HubConnection HubConnection { get; set; }
 	private string _currentMessage;
 	private string _contactId;
+	private const string From = "User A";
+	private const string To = "User B";
 
-	private readonly List<string> _messages = [];
+	private readonly List<ChatMessage> _message = [];
 
 	protected override Task OnInitializedAsync()
 	{
-		HubConnection.On<string>("MessageReceived", message =>
+		HubConnection.On<string, string, string>("MessageReceived", (from, to, message) =>
 		{
-			_messages.Add(message);
+			var newMessage = new ChatMessage { From = from, To = to, Message = message, IsMine = from == From };
+
+			_message.Add(newMessage);
 			InvokeAsync(StateHasChanged);
 		});
 
 		return Task.CompletedTask;
 	}
 
-	private async Task SubmitAsync(string message)
+	private async Task SendMessage()
 	{
-		if (string.IsNullOrWhiteSpace(message)) return;
-		await HubConnection.SendAsync("SendMessage", message);
+		if (string.IsNullOrWhiteSpace(_currentMessage)) return;
+
+		await HubConnection.SendAsync("SendMessage", From, To, _currentMessage);
 		_currentMessage = string.Empty;
+	}
+
+	private class ChatMessage
+	{
+		public string From { get; init; } 
+		public string To { get; init; } 
+		public string Message { get; init; } 
+		public bool IsMine { get; init; } 
 	}
 }
