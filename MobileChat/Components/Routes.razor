@@ -1,6 +1,36 @@
-﻿<Router AppAssembly="@typeof(MauiProgram).Assembly">
+﻿@using MobileChat.Components.Layout
+
+@* <Router AppAssembly="@typeof(MauiProgram).Assembly">
     <Found Context="routeData">
         <RouteView RouteData="@routeData" DefaultLayout="@typeof(Layout.MainLayout)" />
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
-</Router>
+</Router> *@
+
+<CascadingAuthenticationState>
+	<Router AppAssembly="@GetType().Assembly">
+		<Found Context="routeData">
+			<AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+				<Authorizing>
+					<MudGrid>
+						<MudItem xs="4" />
+						<MudItem xs="4">
+							<Spinner />
+						</MudItem>
+						<MudItem xs="4" />
+					</MudGrid>
+				</Authorizing>
+				<NotAuthorized>
+					<NaoAutorizado />
+				</NotAuthorized>
+			</AuthorizeRouteView>
+		</Found>
+		<NotFound>
+			<CascadingAuthenticationState>
+				<LayoutView Layout="@typeof(MainLayout)"> 
+					<NaoEncontrado />
+				</LayoutView>
+			</CascadingAuthenticationState>
+		</NotFound>
+	</Router>
+</CascadingAuthenticationState>

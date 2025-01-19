@@ -1,0 +1,79 @@
+﻿@page "/login"
+
+@using Domain.Models
+@using MobileChat.Data.External
+
+
+<MudContainer>
+
+    <div class="logo">
+        <MudGrid>
+            <MudItem xs="2" sm="7" />
+            <MudItem xs="10" sm="7">
+                <h3>Estacionamento</h3>
+            </MudItem>
+
+        </MudGrid>
+    </div>
+
+    <Spacing />
+    <Spacing />
+
+    <div>
+        <MudGrid>
+            <MudItem xs="1" sm="7" />
+            <MudItem xs="10" sm="7">
+                <h3>Login</h3>
+            </MudItem>
+            <MudItem xs="1" sm="7" />
+
+        </MudGrid>
+
+        <EditForm Model="@_loginViewModel" OnValidSubmit="OnValidSubmit">
+            <DataAnnotationsValidator />
+
+            <MudCardContent>
+                <MudTextField Label="Email" Class="mt-3"
+                @bind-Value="_loginViewModel.Email" For="@(() => _loginViewModel.Email)" />
+
+                <MudTextField Label="Password" Class="mt-3"
+                @bind-Value="_loginViewModel.Password" For="@(() => _loginViewModel.Password)" InputType="InputType.Password" />
+            </MudCardContent>
+
+            <Spacing />
+            <Spacing />
+            <Spacing />
+
+            <MudCardActions>
+                <MudButton FullWidth="true"
+                           ButtonType="ButtonType.Submit"
+                           Variant="Variant.Filled"
+                           Style="background-color: #00a884; color:#0c141b;"
+                           Class="ml-auto">Entrar</MudButton>
+            </MudCardActions>
+        </EditForm>
+
+    </div>
+</MudContainer>
+
+@code
+{
+    LoginRequest _loginViewModel = new();
+    private bool Autenticado = true;
+    private string User = "Zoe";
+
+    protected override Task OnInitializedAsync()
+    {
+	    _loginViewModel.Email = "Zoe@gmail.com";
+	    _loginViewModel.Password = "Abc.1234";
+
+        return Task.CompletedTask;
+    }
+
+    private async void OnValidSubmit()
+    {
+	    await ((ExternalAuthStateProvider)AuthenticationStateProvider).LogInAsync(Autenticado, User);
+        
+	    NavigationManager.NavigateTo($"/");
+    }
+}

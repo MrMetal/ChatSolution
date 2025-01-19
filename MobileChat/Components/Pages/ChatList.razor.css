@@ -1,0 +1,43 @@
+﻿/* Estilo do conteúdo para garantir que o rodapé não sobreponha o conteúdo */
+.content {
+    padding-bottom: 100px; /* Espaço para o rodapé fixo */
+    box-sizing: border-box; /* Garante que o padding seja considerado no tamanho total */
+}
+
+/* MudPaper fixo no rodapé */
+.fixed-footer {
+    position: fixed;
+    bottom: 0;
+    left: -15px;
+    width: 100%;
+    background-color: white; /* Ajuste conforme necessário */
+    z-index: 10; /* Garante que o MudPaper fique acima de outros elementos */
+    padding: 10px 0;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2); /* Um leve sombreado para destaque */
+}
+
+    /* Ajuste para a largura do MudTextField */
+    .fixed-footer .mud-textfield {
+        flex-grow: 1;
+    }
+
+
+/*LEFT OR RIGHT*/
+
+.my-message {
+    text-align: right;
+    background-color: #d1e7dd;
+    padding: 10px;
+    margin: 5px;
+    border-radius: 10px;
+    display: inline-block;
+}
+
+.their-message {
+    text-align: left;
+    background-color: #f8d7da;
+    padding: 10px;
+    margin: 5px;
+    border-radius: 10px;
+    display: inline-block;
+}

@@ -1,7 +1,78 @@
 ﻿@page "/"
 
-<h1>Hello, world!</h1>
+@using System.Security.Claims
+@using Domain.Models
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.SignalR.Client
+
+<h1>Hello, Elizabeth!</h1>
 
 Welcome to your new app.
 
-<MudButton Href="/chat-contact">Go To Chat</MudButton>
+<MudList T="string" Dense="true">
+	@foreach (var contact in _contacts)
+	{
+		<MudList T="string">
+			<MudListItem OnClick="() => SelectContact(contact.Name, contact.Id)">
+				<AvatarContent>
+					<MudAvatar Color="Color.Tertiary">U</MudAvatar>
+				</AvatarContent>
+				<ChildContent>
+					@contact.Name
+				</ChildContent>             
+			</MudListItem>
+		</MudList>
+	}
+</MudList>
+
+@if (!string.IsNullOrWhiteSpace(_selectedContact))
+{
+	<MudButton OnClick="GoToChat">Go To Chat With @_selectedContact</MudButton>
+}
+
+<MudButton OnClick="GoToUpdate">Reload</MudButton>
+
+@code
+{
+	private string _selectedContact = string.Empty;
+	private Guid _id;
+	private const string From = "Elizabeth";
+	[CascadingParameter] public required HubConnection HubConnection { get; set; }
+	private ClaimsPrincipal _currentUser = new(new ClaimsIdentity());
+	private bool _isAuthenticated;
+	
+	private List<Contacts> _contacts = [];
+
+	protected override async Task OnInitializedAsync()
+	{
+
+		var claimsIdentity = new ClaimsIdentity([new Claim(ClaimTypes.Name, From)], "apiauth");
+
+		_currentUser = new ClaimsPrincipal(claimsIdentity);
+
+
+		await HubConnection.SendAsync("Register", From);
+
+		// Update contact list
+		HubConnection.On<List<string>>("UserListUpdated", (usernames) =>
+		{
+			_contacts = usernames
+				.Where(u => u != From) // Exclude self
+				.Select(u => new Contacts { Name = u })
+				.ToList();
+
+			InvokeAsync(StateHasChanged);
+		});
+	}
+
+	private void SelectContact(string contactName, Guid id)
+	{
+		_selectedContact = contactName;
+		_id = id;
+		StateHasChanged();
+	}
+
+	private void GoToChat() => NavigationManager.NavigateTo($"/chat-contact/{_selectedContact}/{_id}/{From}");
+	private async Task GoToUpdate() => await OnInitializedAsync();
+
+}

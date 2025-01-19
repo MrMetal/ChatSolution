@@ -1,4 +1,7 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+using MobileChat.Data.External;
 using MudBlazor.Services;
 
 namespace MobileChat
@@ -22,6 +25,11 @@ namespace MobileChat
     		builder.Services.AddBlazorWebViewDeveloperTools();
     		builder.Logging.AddDebug();
 #endif
+
+            //Auth Config
+           builder.Services.AddAuthorizationCore();
+           builder.Services.TryAddScoped<AuthenticationStateProvider, ExternalAuthStateProvider>();
+           builder.Services.AddScoped<ExternalAuthStateProvider>();
 
             return builder.Build();
         }

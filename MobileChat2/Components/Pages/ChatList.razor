@@ -1,6 +1,9 @@
-﻿@page "/chat-contact"
-@* @page "/chat-contact/{ContactId}" *@
+﻿@* @page "/chat-contact" *@
+@page "/chat-contact/{To}/{Id}/{From}"
 
+
+@using Domain.Models
+@using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.SignalR.Client
 
 <style>
@@ -50,6 +53,8 @@
 
 </style>
 
+<MudButton OnClick="GoToUpdate">Elizabeth</MudButton>
+
 <MudList T="string" Dense="true">
 	@foreach (var chatMessage in _message)
 	{
@@ -61,7 +66,7 @@
 						<b>@chatMessage.From:</b> @chatMessage.Message
 					</div>
 
-				</ChildContent>              
+				</ChildContent>
 			</MudListItem>
 		</MudList>
 	}
@@ -77,10 +82,10 @@
 
 @code {
 	[CascadingParameter] public required HubConnection HubConnection { get; set; }
-	private string _currentMessage;
-	private string _contactId;
-	private const string From = "User A";
-	private const string To = "User B";
+	private string? _currentMessage;
+	[Parameter] public string From { get; set; }
+	[Parameter] public string To { get; set; }
+	[Parameter] public string Id { get; set; }
 
 	private readonly List<ChatMessage> _message = [];
 
@@ -105,11 +110,6 @@
 		_currentMessage = string.Empty;
 	}
 
-	private class ChatMessage
-	{
-		public string From { get; init; } 
-		public string To { get; init; } 
-		public string Message { get; init; } 
-		public bool IsMine { get; init; } 
-	}
+	private async Task GoToUpdate() => await OnInitializedAsync();
+
 }

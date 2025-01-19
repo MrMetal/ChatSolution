@@ -1,5 +1,7 @@
 ﻿
 @using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.AspNetCore.Components.Authorization
+@using MobileChat.Components.Pages
 @inherits LayoutComponentBase
 
 <MudThemeProvider />
@@ -21,6 +23,34 @@
 	</MudLayout>
 </MudLayout>
 
+@* <MudLayout>
+	<AuthorizeView>
+		<Authorized>
+			<NavMenu />
+
+			<MudMainContent>
+				<MudContainer>
+					<CascadingValue Value="hubConnection">
+						@Body
+					</CascadingValue>
+				</MudContainer>
+			</MudMainContent>
+
+			<br/>
+			<br/>
+			<br/>
+			<br/>
+
+		</Authorized>
+		<NotAuthorized>
+
+			<Login />
+
+		</NotAuthorized>
+	</AuthorizeView>
+
+</MudLayout> *@
+
 @code
 {
 	private HubConnection hubConnection;
@@ -29,6 +59,7 @@
 
 	protected override Task OnInitializedAsync()
 	{
+
 		hubConnection = new HubConnectionBuilder().WithUrl("http://localhost:5149/chat").Build();
 		hubConnection.StartAsync();
 

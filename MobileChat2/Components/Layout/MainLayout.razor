@@ -1,9 +1,12 @@
 ﻿@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.AspNetCore.Components.Authorization
+@using MobileChat2.Components.Pages
 @inherits LayoutComponentBase
 
 <MudThemeProvider />
 <MudDialogProvider FullWidth="true" MaxWidth="MaxWidth.Medium" />
 <MudSnackbarProvider />
+
 
 <MudLayout>
 	<MudLayout>
@@ -18,6 +21,34 @@
 		</MudMainContent>
 	</MudLayout>
 </MudLayout>
+
+@* <MudLayout>
+	<AuthorizeView>
+		<Authorized>
+			<NavMenu />
+
+			<MudMainContent>
+				<MudContainer>
+					<CascadingValue Value="hubConnection">
+						@Body
+					</CascadingValue>
+				</MudContainer>
+			</MudMainContent>
+
+			<br/>
+			<br/>
+			<br/>
+			<br/>
+
+		</Authorized>
+		<NotAuthorized>
+
+			<Login />
+
+		</NotAuthorized>
+	</AuthorizeView>
+
+</MudLayout> *@
 
 @code
 {
