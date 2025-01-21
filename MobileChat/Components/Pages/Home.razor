@@ -1,10 +1,13 @@
 ﻿@page "/"
 
+@inject INotificationService NotificationService
+
 @using System.Security.Claims
 @using Domain.Models
 @using Microsoft.AspNetCore.SignalR.Client
+@using Plugin.LocalNotification
 
-<h1>Hello, Zoe!</h1>
+<h1>Hello, @From!</h1>
 
 Welcome to your new app.
 
@@ -29,7 +32,8 @@ Welcome to your new app.
 	<MudButton OnClick="GoToChat">Go To Chat With @_selectedContact ()</MudButton>
 }
 
-<MudButton OnClick="GoToUpdate">Reload</MudButton>
+@* <MudButton OnClick="GoToUpdate">Reload</MudButton> *@
+<MudButton OnClick="SendNotification">Send Notification</MudButton>
 
 
 @code
@@ -45,24 +49,26 @@ Welcome to your new app.
 
 	protected override async Task OnInitializedAsync()
 	{
+		_contacts.Add(new Contacts{Name = "Anna"});
+		_contacts.Add(new Contacts{Name = "Evangeline"});
 
 		var claimsIdentity = new ClaimsIdentity([new Claim(ClaimTypes.Name, From)], "apiauth");
 
 		_currentUser = new ClaimsPrincipal(claimsIdentity);
-
-
-		await HubConnection.SendAsync("Register", From);
-
+		
 		// Update contact list
-		HubConnection.On<List<string>>("UserListUpdated", (usernames) =>
+		HubConnection.On<List<string>>("UserListUpdated", usernames =>
 		{
-			_contacts = usernames
+			var contact = usernames
 				.Where(u => u != From) // Exclude self
-				.Select(u => new Contacts { Name = u })
-				.ToList();
+				.Select(u => new Contacts { Name = u });
+
+			_contacts.AddRange(contact.ToList());
 
 			InvokeAsync(StateHasChanged);
 		});
+
+		await HubConnection.SendAsync("Register", From);
 	}
 
 	private void SelectContact(string contactName, Guid id)
@@ -74,5 +80,19 @@ Welcome to your new app.
 
 	private void GoToChat() => NavigationManager.NavigateTo($"/chat-contact/{_selectedContact}/{_id}/{From}");
 	private async Task GoToUpdate() => await OnInitializedAsync();
+
+	private void SendNotification()
+	{
+		NotificationService.Show(new NotificationRequest
+		{
+			NotificationId = 1,
+			Title = "New Message from",
+			Description = "Some description here",
+			Schedule = new NotificationRequestSchedule
+			{
+				NotifyTime = DateTime.Now.AddSeconds(5)
+			}
+		});
+	}
 
 }

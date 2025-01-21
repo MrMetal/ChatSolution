@@ -1,9 +1,6 @@
-﻿@* @page "/chat-contact" *@
-@page "/chat-contact/{To}/{Id}/{From}"
-
+﻿@page "/chat-contact/{To}/{Id}/{From}"
 
 @using Domain.Models
-@using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.SignalR.Client
 
 <style>
@@ -33,44 +30,68 @@
 
 	/*LEFT OR RIGHT*/
 
-	.my-message {
-		text-align: right;
-		background-color: #d1e7dd;
-		padding: 10px;
-		margin: 5px;
-		border-radius: 10px;
-		display: inline-block;
+	.message {
+		display: flex;
+		align-items: flex-end;
 	}
 
-	.their-message {
-		text-align: left;
-		background-color: #f8d7da;
-		padding: 10px;
-		margin: 5px;
-		border-radius: 10px;
-		display: inline-block;
+		.message.left {
+			flex-direction: row;
+			padding: 15px;
+		}
+
+		.message.right {
+			flex-direction: row-reverse;
+			padding: 15px;
+		}
+
+	.message-avatar img {
+		border-radius: 50%;
+		width: 40px;
+		height: 40px;
+		margin-right: 10px;
+	}
+
+	.message-bubble {
+		max-width: 60%;
+		background-color: #f1f1f1;
+		padding: 10px 15px;
+		border-radius: 20px;
+		position: relative;
+	}
+
+	.message.left .message-bubble {
+		background-color: #e1f5fe;
+	}
+
+	.message.right .message-bubble {
+		background-color: #e8f5e9;
+	}
+
+	.message .name {
+		font-weight: bold;
+		margin-bottom: 5px;
+	}
+
+	.message .text {
+		margin: 0;
 	}
 
 </style>
 
-<MudButton OnClick="GoToUpdate">Elizabeth</MudButton>
+<MudButton>Elizabeth</MudButton>
 
-<MudList T="string" Dense="true">
-	@foreach (var chatMessage in _message)
-	{
-		<MudList T="string">
-			<MudListItem>
-				<ChildContent>
+<MudDivider />
 
-					<div class="@(chatMessage.IsMine ? "my-message" : "their-message")">
-						<b>@chatMessage.From:</b> @chatMessage.Message
-					</div>
-
-				</ChildContent>
-			</MudListItem>
-		</MudList>
-	}
-</MudList>
+@foreach (var chatMessage in _message)
+{
+	<div class="@(chatMessage.IsMine ? "message right" : "message left")">
+		<div class="message-bubble">
+			<p class="name">@chatMessage.From</p>
+			<p class="text">@chatMessage.Message</p>
+		</div>
+	</div>
+}
 
 <div class="content">
 	<MudPaper Elevation="15" Class="d-flex flex-row px-2 mx-4 fixed-footer">
@@ -109,7 +130,4 @@
 		await HubConnection.SendAsync("SendMessage", From, To, _currentMessage);
 		_currentMessage = string.Empty;
 	}
-
-	private async Task GoToUpdate() => await OnInitializedAsync();
-
 }

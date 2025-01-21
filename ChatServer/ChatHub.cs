@@ -13,28 +13,50 @@ public class ChatHub : Hub
     }
 
     // Called when a user registers
+    //public async Task Register(string username)
+    //{
+    //    Users[username] = Context.ConnectionId;
+    //    await Clients.All.SendAsync("UserListUpdated", Users.Keys.ToList());
+    //}
+
     public async Task Register(string username)
     {
-        Users[username] = Context.ConnectionId;
-        await Clients.All.SendAsync("UserListUpdated", Users.Keys.ToList());
+        if (!Users.Values.Contains(username))
+        {
+            Users[username] = Context.ConnectionId;
+
+            await UpdateUserList();
+        }
+    }
+
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        if (Users.Remove(Context.ConnectionId))
+        {
+            await UpdateUserList();
+        }
+
+        await base.OnDisconnectedAsync(exception);
     }
 
     public async Task SendMessage(string from, string to, string message)
     {
         Console.WriteLine(message);
-        //await Clients.All.SendAsync("MessageReceived", from, to, message);
 
-        //var xxx = Users.Where(x => x.Key == from).Select(c => c.Value).Single();
-        //await Clients.Client(xxx).SendAsync("MessageReceived", from, to, message);
-
-        if (Users.TryGetValue(from, out var fromConnectionId))
+        if (Users.TryGetValue(from, out var connectionId))
         {
-            await Clients.Client(fromConnectionId).SendAsync("MessageReceived", from, to, message);
+            await Clients.Client(connectionId).SendAsync("MessageReceived", from, to, message);
         }
 
-        if (Users.TryGetValue(to, out var toConnectionId))
+        if (Users.TryGetValue(to, out var connectionsId))
         {
-            await Clients.Client(toConnectionId).SendAsync("MessageReceived", from, to, message);
+            await Clients.Client(connectionsId).SendAsync("MessageReceived", from, to, message);
         }
+    }
+
+    private async Task UpdateUserList()
+    {
+        var userList = Users.Keys.ToList();
+        await Clients.All.SendAsync("UserListUpdated", userList);
     }
 }

@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using MobileChat.Data.External;
 using MudBlazor.Services;
+using Plugin.LocalNotification;
 
 namespace MobileChat
 {
@@ -13,6 +14,7 @@ namespace MobileChat
             var builder = MauiApp.CreateBuilder();
             builder
                 .UseMauiApp<App>()
+                .UseLocalNotification()
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -22,14 +24,14 @@ namespace MobileChat
             builder.Services.AddMauiBlazorWebView();
 
 #if DEBUG
-    		builder.Services.AddBlazorWebViewDeveloperTools();
-    		builder.Logging.AddDebug();
+            builder.Services.AddBlazorWebViewDeveloperTools();
+            builder.Logging.AddDebug();
 #endif
 
             //Auth Config
-           builder.Services.AddAuthorizationCore();
-           builder.Services.TryAddScoped<AuthenticationStateProvider, ExternalAuthStateProvider>();
-           builder.Services.AddScoped<ExternalAuthStateProvider>();
+            builder.Services.AddAuthorizationCore();
+            builder.Services.TryAddScoped<AuthenticationStateProvider, ExternalAuthStateProvider>();
+            builder.Services.AddScoped<ExternalAuthStateProvider>();
 
             return builder.Build();
         }

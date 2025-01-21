@@ -7,5 +7,7 @@ public class Contacts
     public string Email { get;  set; }
     public string Name { get;  set; }
     public string Phone { get;  set; }
+    public string Status { get; set; } = "Online"; // Default to online
+
     public List<ChatMessage> Messages { get;  set; } = [];
 }

@@ -5,7 +5,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.SignalR.Client
 
-<h1>Hello, Elizabeth!</h1>
+<h1>Hello, @From!</h1>
 
 Welcome to your new app.
 
@@ -30,7 +30,7 @@ Welcome to your new app.
 	<MudButton OnClick="GoToChat">Go To Chat With @_selectedContact</MudButton>
 }
 
-<MudButton OnClick="GoToUpdate">Reload</MudButton>
+@* <MudButton OnClick="GoToUpdate">Reload</MudButton> *@
 
 @code
 {
@@ -43,26 +43,29 @@ Welcome to your new app.
 	
 	private List<Contacts> _contacts = [];
 
+
 	protected override async Task OnInitializedAsync()
 	{
+		_contacts.Add(new Contacts{Name = "Jully"});
+		_contacts.Add(new Contacts{Name = "Ollie"});
 
 		var claimsIdentity = new ClaimsIdentity([new Claim(ClaimTypes.Name, From)], "apiauth");
 
 		_currentUser = new ClaimsPrincipal(claimsIdentity);
-
-
-		await HubConnection.SendAsync("Register", From);
-
+		
 		// Update contact list
-		HubConnection.On<List<string>>("UserListUpdated", (usernames) =>
+		HubConnection.On<List<string>>("UserListUpdated", usernames =>
 		{
-			_contacts = usernames
+			var contact = usernames
 				.Where(u => u != From) // Exclude self
-				.Select(u => new Contacts { Name = u })
-				.ToList();
+				.Select(u => new Contacts { Name = u });
+
+			_contacts.AddRange(contact.ToList());
 
 			InvokeAsync(StateHasChanged);
 		});
+
+		await HubConnection.SendAsync("Register", From);
 	}
 
 	private void SelectContact(string contactName, Guid id)
