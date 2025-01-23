@@ -67,6 +67,7 @@
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.0" />
 		<PackageReference Include="MudBlazor" Version="7.15.0" />
 		<PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="9.0.0" />
+		<PackageReference Include="Plugin.LocalNotification" Version="11.1.4" />
 
 	</ItemGroup>
 

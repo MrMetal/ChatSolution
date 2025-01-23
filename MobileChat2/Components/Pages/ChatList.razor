@@ -108,10 +108,15 @@
 	[Parameter] public string To { get; set; }
 	[Parameter] public string Id { get; set; }
 
+	private bool IsOnChatPage;
+
 	private readonly List<ChatMessage> _message = [];
 
 	protected override Task OnInitializedAsync()
 	{
+		IsOnChatPage = true; // User is on the chat page
+
+
 		HubConnection.On<string, string, string>("MessageReceived", (from, to, message) =>
 		{
 			var newMessage = new ChatMessage { From = from, To = to, Message = message, IsMine = from == From };
@@ -121,6 +126,20 @@
 		});
 
 		return Task.CompletedTask;
+	}
+
+	protected override void OnAfterRender(bool firstRender)
+	{
+		base.OnAfterRender(firstRender);
+		if (firstRender)
+		{
+			IsOnChatPage = true;
+		}
+	}
+
+	public void Dispose()
+	{
+		IsOnChatPage = false; // User left the chat page
 	}
 
 	private async Task SendMessage()

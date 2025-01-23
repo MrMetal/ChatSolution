@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using MobileChat2.Data.External;
 using MudBlazor.Services;
+using Plugin.LocalNotification;
 
 namespace MobileChat2
 {
@@ -13,6 +14,7 @@ namespace MobileChat2
             var builder = MauiApp.CreateBuilder();
             builder
                 .UseMauiApp<App>()
+                .UseLocalNotification()
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");

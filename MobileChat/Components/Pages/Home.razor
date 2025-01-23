@@ -32,7 +32,7 @@ Welcome to your new app.
 	<MudButton OnClick="GoToChat">Go To Chat With @_selectedContact ()</MudButton>
 }
 
-@* <MudButton OnClick="GoToUpdate">Reload</MudButton> *@
+
 <MudButton OnClick="SendNotification">Send Notification</MudButton>
 
 
@@ -49,26 +49,38 @@ Welcome to your new app.
 
 	protected override async Task OnInitializedAsync()
 	{
-		_contacts.Add(new Contacts{Name = "Anna"});
-		_contacts.Add(new Contacts{Name = "Evangeline"});
-
-		var claimsIdentity = new ClaimsIdentity([new Claim(ClaimTypes.Name, From)], "apiauth");
-
-		_currentUser = new ClaimsPrincipal(claimsIdentity);
-		
-		// Update contact list
-		HubConnection.On<List<string>>("UserListUpdated", usernames =>
+		try
 		{
-			var contact = usernames
-				.Where(u => u != From) // Exclude self
-				.Select(u => new Contacts { Name = u });
+			if (HubConnection.State == HubConnectionState.Disconnected)
+			{
+				await HubConnection.StartAsync();
+			}
 
-			_contacts.AddRange(contact.ToList());
+			_contacts.Add(new Contacts{Name = "Anna"});
+			_contacts.Add(new Contacts{Name = "Evangeline"});
 
-			InvokeAsync(StateHasChanged);
-		});
+			var claimsIdentity = new ClaimsIdentity([new Claim(ClaimTypes.Name, From)], "apiauth");
 
-		await HubConnection.SendAsync("Register", From);
+			_currentUser = new ClaimsPrincipal(claimsIdentity);
+		
+			// Update contact list
+			HubConnection.On<List<string>>("UserListUpdated", usernames =>
+			{
+				var contact = usernames
+					.Where(u => u != From) // Exclude self
+					.Select(u => new Contacts { Name = u });
+
+				_contacts.AddRange(contact.ToList());
+
+				InvokeAsync(StateHasChanged);
+			});
+
+			await HubConnection.SendAsync("Register", From);
+		}
+		catch (Exception e)
+		{
+			Console.WriteLine(e);
+		}
 	}
 
 	private void SelectContact(string contactName, Guid id)
@@ -79,7 +91,7 @@ Welcome to your new app.
 	}
 
 	private void GoToChat() => NavigationManager.NavigateTo($"/chat-contact/{_selectedContact}/{_id}/{From}");
-	private async Task GoToUpdate() => await OnInitializedAsync();
+	
 
 	private void SendNotification()
 	{

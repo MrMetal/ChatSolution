@@ -12,13 +12,6 @@ public class ChatHub : Hub
         await base.OnConnectedAsync();
     }
 
-    // Called when a user registers
-    //public async Task Register(string username)
-    //{
-    //    Users[username] = Context.ConnectionId;
-    //    await Clients.All.SendAsync("UserListUpdated", Users.Keys.ToList());
-    //}
-
     public async Task Register(string username)
     {
         if (!Users.Values.Contains(username))

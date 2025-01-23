@@ -2,8 +2,10 @@
 
 @using System.Security.Claims
 @using Domain.Models
-@using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.SignalR.Client
+@using Plugin.LocalNotification
+
+@inject INotificationService NotificationService
 
 <h1>Hello, @From!</h1>
 
@@ -30,7 +32,7 @@ Welcome to your new app.
 	<MudButton OnClick="GoToChat">Go To Chat With @_selectedContact</MudButton>
 }
 
-@* <MudButton OnClick="GoToUpdate">Reload</MudButton> *@
+<MudButton OnClick="SendNotification">Send Notification</MudButton>
 
 @code
 {
@@ -42,7 +44,6 @@ Welcome to your new app.
 	private bool _isAuthenticated;
 	
 	private List<Contacts> _contacts = [];
-
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -76,6 +77,19 @@ Welcome to your new app.
 	}
 
 	private void GoToChat() => NavigationManager.NavigateTo($"/chat-contact/{_selectedContact}/{_id}/{From}");
-	private async Task GoToUpdate() => await OnInitializedAsync();
+	
+	private void SendNotification()
+	{
+		NotificationService.Show(new NotificationRequest
+		{
+			NotificationId = 1,
+			Title = "New Message from",
+			Description = "Some description here",
+			Schedule = new NotificationRequestSchedule
+			{
+				NotifyTime = DateTime.Now.AddSeconds(5)
+			}
+		});
+	}
 
 }

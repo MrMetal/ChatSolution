@@ -1,13 +1,10 @@
-﻿
-@using Microsoft.AspNetCore.SignalR.Client
-@using Microsoft.AspNetCore.Components.Authorization
-@using MobileChat.Components.Pages
+﻿@using Microsoft.AspNetCore.SignalR.Client
+
 @inherits LayoutComponentBase
 
 <MudThemeProvider />
 <MudDialogProvider FullWidth="true" MaxWidth="MaxWidth.Medium" />
 <MudSnackbarProvider />
-
 
 <MudLayout>
 	<MudLayout>
@@ -23,34 +20,6 @@
 	</MudLayout>
 </MudLayout>
 
-@* <MudLayout>
-	<AuthorizeView>
-		<Authorized>
-			<NavMenu />
-
-			<MudMainContent>
-				<MudContainer>
-					<CascadingValue Value="hubConnection">
-						@Body
-					</CascadingValue>
-				</MudContainer>
-			</MudMainContent>
-
-			<br/>
-			<br/>
-			<br/>
-			<br/>
-
-		</Authorized>
-		<NotAuthorized>
-
-			<Login />
-
-		</NotAuthorized>
-	</AuthorizeView>
-
-</MudLayout> *@
-
 @code
 {
 	private HubConnection hubConnection;
@@ -59,9 +28,31 @@
 
 	protected override Task OnInitializedAsync()
 	{
+		try
+		{
+
+ #if ANDROID
+
+			var baseAddress = DeviceInfo.Platform == DevicePlatform.Android ? "http://10.0.2.2:5149" : "http://localhost:5149";
+			//var baseAddress = DeviceInfo.Platform == DevicePlatform.Android ? "https://10.0.2.2:7088" : "https://localhost:7088";
+
+			baseAddress = baseAddress + "/chat";
+
+			hubConnection = new HubConnectionBuilder().WithUrl($"{baseAddress}").Build();
+
+#elif WINDOWS
 
 		hubConnection = new HubConnectionBuilder().WithUrl("http://localhost:5149/chat").Build();
-		hubConnection.StartAsync();
+
+#endif
+
+			hubConnection.StartAsync();
+		}
+		catch (Exception e)
+		{
+			Console.WriteLine(e);
+			throw;
+		}
 
 		return Task.CompletedTask;
 	}
