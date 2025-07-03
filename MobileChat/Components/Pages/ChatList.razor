@@ -1,134 +1,147 @@
 ﻿@page "/chat-contact/{To}/{Id}/{From}"
-
-@using Domain.Models
 @using Microsoft.AspNetCore.SignalR.Client
+@using Shared.Results
 
 <style>
-	/* Estilo do conteúdo para garantir que o rodapé não sobreponha o conteúdo */
-	.content {
-		padding-bottom: 100px; /* Espaço para o rodapé fixo */
-		box-sizing: border-box; /* Garante que o padding seja considerado no tamanho total */
-	}
+    /* Estilo do conteúdo para garantir que o rodapé não sobreponha o conteúdo */
+    .content {
+        padding-bottom: 100px; /* Espaço para o rodapé fixo */
+        box-sizing: border-box; /* Garante que o padding seja considerado no tamanho total */
+    }
 
-	/* MudPaper fixo no rodapé */
-	.fixed-footer {
-		position: fixed;
-		bottom: 0;
-		left: -15px;
-		width: 100%;
-		background-color: white; /* Ajuste conforme necessário */
-		z-index: 10; /* Garante que o MudPaper fique acima de outros elementos */
-		padding: 10px 0;
-		box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2); /* Um leve sombreado para destaque */
-	}
+    /* MudPaper fixo no rodapé */
+    .fixed-footer {
+        position: fixed;
+        bottom: 0;
+        left: -15px;
+        width: 100%;
+        background-color: white; /* Ajuste conforme necessário */
+        z-index: 10; /* Garante que o MudPaper fique acima de outros elementos */
+        padding: 10px 0;
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2); /* Um leve sombreado para destaque */
+    }
 
-		/* Ajuste para a largura do MudTextField */
-		.fixed-footer .mud-textfield {
-			flex-grow: 1;
-		}
+        /* Ajuste para a largura do MudTextField */
+        .fixed-footer .mud-textfield {
+            flex-grow: 1;
+        }
 
 
-	/*LEFT OR RIGHT*/
+    /*LEFT OR RIGHT*/
 
-	.message {
-		display: flex;
-		align-items: flex-end;
-	}
+    .message {
+        display: flex;
+        align-items: flex-end;
+    }
 
-		.message.left {
-			flex-direction: row;
-			padding: 15px;
-		}
+        .message.left {
+            flex-direction: row;
+            padding: 15px;
+        }
 
-		.message.right {
-			flex-direction: row-reverse;
-			padding: 15px;
-		}
+        .message.right {
+            flex-direction: row-reverse;
+            padding: 15px;
+        }
 
-	.message-avatar img {
-		border-radius: 50%;
-		width: 40px;
-		height: 40px;
-		margin-right: 10px;
-	}
+    .message-avatar img {
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        margin-right: 10px;
+    }
 
-	.message-bubble {
-		max-width: 60%;
-		background-color: #f1f1f1;
-		padding: 10px 15px;
-		border-radius: 20px;
-		position: relative;
-	}
+    .message-bubble {
+        max-width: 60%;
+        background-color: #f1f1f1;
+        padding: 10px 15px;
+        border-radius: 20px;
+        position: relative;
+    }
 
-	.message.left .message-bubble {
-		background-color: #e1f5fe;
-	}
+    .message.left .message-bubble {
+        background-color: #e1f5fe;
+    }
 
-	.message.right .message-bubble {
-		background-color: #e8f5e9;
-	}
+    .message.right .message-bubble {
+        background-color: #e8f5e9;
+    }
 
-	.message .name {
-		font-weight: bold;
-		margin-bottom: 5px;
-	}
+    .message .name {
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
 
-	.message .text {
-		margin: 0;
-	}
-
+    .message .text {
+        margin: 0;
+    }
 
 </style>
 
-<MudButton>Zoe</MudButton>
+<MudButton>@From</MudButton>
 
 <MudDivider />
 
-@foreach (var chatMessage in _message)
+@foreach (var chatMessage in _messages)
 {
-	<div class="@(chatMessage.IsMine ? "message right" : "message left")">
-		<div class="message-bubble">
-			<p class="name">@chatMessage.From</p>
-			<p class="text">@chatMessage.Message</p>
-		</div>
-	</div>
+    <div class="@(chatMessage.IsMine ? "message right" : "message left")">
+        <div class="message-bubble">
+            <p class="name">@chatMessage.From</p>
+            <p class="text">@chatMessage.Message</p>
+        </div>
+    </div>
 }
 
 <div class="content">
-	<MudPaper Elevation="15" Class="d-flex flex-row px-2 mx-4 fixed-footer">
-		<MudTextField T="string" Placeholder="Enter your message..." DisableUnderLine="true" Class="mx-4"
-					  @bind-Value="_currentMessage" For="@(()=> _currentMessage)" />
-		<MudButton OnClick="SendMessage" StartIcon="@Icons.Material.Outlined.Send" Color="Color.Primary" ButtonType="ButtonType.Button"></MudButton>
-	</MudPaper>
+    <MudPaper Elevation="15" Class="d-flex flex-row px-2 mx-4 fixed-footer">
+        <MudTextField T="string" Placeholder="Enter your message..." DisableUnderLine="true" Class="mx-4"
+                      @bind-Value="_currentMessage" For="@(() => _currentMessage)" />
+        <MudButton OnClick="SendMessage" StartIcon="@Icons.Material.Outlined.Send" Color="Color.Primary" ButtonType="ButtonType.Button"></MudButton>
+    </MudPaper>
 </div>
 
 @code {
-	[CascadingParameter] public required HubConnection HubConnection { get; set; }
-	private string? _currentMessage;
-	[Parameter] public string From { get; set; }
-	[Parameter] public string To { get; set; }
-	[Parameter] public string Id { get; set; }
+    [CascadingParameter] public required HubConnection HubConnection { get; set; }
+    private string? _currentMessage;
+    [Parameter] public string From { get; set; } = string.Empty;
+    [Parameter] public string To { get; set; } = string.Empty;
+    [Parameter] public string Id { get; set; } = string.Empty;
 
-	private readonly List<ChatMessage> _message = [];
+    private List<ChatMessageResult> _messages = new();
 
-	protected override Task OnInitializedAsync()
-	{	
-		HubConnection.On<string, string, string>("MessageReceived", (from, to, message) =>
-		{
-			var newMessage = new ChatMessage { From = from, To = to, Message = message, IsMine = from == From };
+    protected override async Task OnInitializedAsync()
+    {
+        // Escuta por novas mensagens em tempo real
+        HubConnection.On<string, string, string, string>("MessageReceived", async (from, to, message, contactId) =>
+        {
+            var newMessage = new ChatMessageResult
+            {
+                From = from,
+                To = to,
+                Message = message,
+                ContactId = Guid.Parse(contactId),
+                IsMine = from == From
+            };
 
-			_message.Add(newMessage);
-			InvokeAsync(StateHasChanged);
-		});
+            _messages.Add(newMessage);
+            await InvokeAsync(StateHasChanged);
+        });
 
-		return Task.CompletedTask;
-	}
+        // Carrega histórico ao iniciar
+        _messages = await HubConnection.InvokeAsync<List<ChatMessageResult>>("GetMessageHistory", From, To);
+        foreach (var msg in _messages)
+        {
+            msg.IsMine = msg.From == From;
+        }
 
-	private async Task SendMessage()
-	{
-		if (string.IsNullOrWhiteSpace(_currentMessage)) return;
+        await InvokeAsync(StateHasChanged);
+    }
 
-		await HubConnection.SendAsync("SendMessage", From, To, _currentMessage);
-		_currentMessage = string.Empty;
-	}
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(_currentMessage)) return;
+
+        await HubConnection.SendAsync("SendMessage", From, To, _currentMessage, Id);
+        _currentMessage = string.Empty;
+    }
 }

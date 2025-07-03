@@ -7,7 +7,6 @@ namespace ChatServer.Services;
 public interface IContactService
 {
     Task<IEnumerable<ContactsResult>> ObterTodos(string ownerEmail);
-    Task<ContactsResult?> ObterPorId(Guid id);
 }
 
 public class ContactService(ApplicationDbContext context) : IContactService
@@ -23,23 +22,10 @@ public class ContactService(ApplicationDbContext context) : IContactService
                 Email = x.Email,
                 Name = x.Name,
                 Status = x.Status,
+                Id = x.Id
             })
+            .OrderBy(x => x.Name)
             .ToListAsync();
-
-        return result;
-    }
-
-    public async Task<ContactsResult?> ObterPorId(Guid id)
-    {
-        var result = await context.Contacts
-            .AsNoTracking().Select(x => new ContactsResult
-            {
-                ConnectionId = x.ConnectionId,
-                Email = x.Email,
-                Name = x.Name,
-                Status = x.Status,
-            })
-            .FirstOrDefaultAsync(x => x.Id == id);
 
         return result;
     }

@@ -1,129 +1,19 @@
-﻿using Azure.Core;
-using Data;
+﻿using Data;
 using Domain.Models;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Shared.Requests;
-using System;
+using Shared.Results;
 
 namespace ChatServer;
 
-//public class ChatHub : Hub
-//{
-//    private static readonly Dictionary<string, string> OnlineUsers = new(); // Username -> ConnectionId
-//    private readonly IContactRepository _contactRepository;
-//    private readonly IUnitOfWork _unitOfWork;
-//    private readonly ApplicationDbContext _context;
-
-//    public ChatHub(IContactRepository contactRepository, IUnitOfWork unitOfWork, ApplicationDbContext context)
-//    {
-//        _contactRepository = contactRepository;
-//        _unitOfWork = unitOfWork;
-//        _context = context;
-//    }
-
-//    // Called when a user connects
-//    public override async Task OnConnectedAsync()
-//    {
-//        var email = Context.User?.Identity?.Name;
-//        if (string.IsNullOrEmpty(email)) return;
-
-//        OnlineUsers[email] = Context.ConnectionId;
-
-//        // Atualiza status no banco
-//        var contact = await _context.Contacts.FirstOrDefaultAsync(c => c.Email == email);
-//        if (contact is not null)
-//        {
-//            contact.Status = "Online";
-//            await _context.SaveChangesAsync();
-//        }
-
-//        await UpdateUserList();
-//        await base.OnConnectedAsync();
-//    }
-
-//    public async Task Register(string user)
-//    {
-//        if (!OnlineUsers.Values.Contains(user))
-//        {
-//            OnlineUsers[Context.ConnectionId] = user;
-//            await UpdateUserList();
-//        }
-//    }
-
-//    public override async Task OnDisconnectedAsync(Exception? exception)
-//    {
-//        var email = OnlineUsers.FirstOrDefault(x => x.Value == Context.ConnectionId).Key;
-
-//        if (!string.IsNullOrEmpty(email))
-//        {
-//            OnlineUsers.Remove(email);
-
-//            // Atualiza no banco
-//            var contact = await _context.Contacts.FirstOrDefaultAsync(c => c.Email == email);
-//            if (contact is not null)
-//            {
-//                contact.Status = "Offline";
-//                await _context.SaveChangesAsync();
-//            }
-//        }
-
-//        await UpdateUserList();
-//        await base.OnDisconnectedAsync(exception);
-//    }
-
-//    public async Task SendMessage(string from, string to, string message)
-//    {
-//        Console.WriteLine(message);
-
-//        if (OnlineUsers.TryGetValue(from, out var connectionId))
-//        {
-//            await Clients.Client(connectionId).SendAsync("MessageReceived", from, to, message);
-//        }
-
-//        if (OnlineUsers.TryGetValue(to, out var connectionsId))
-//        {
-//            await Clients.Client(connectionsId).SendAsync("MessageReceived", from, to, message);
-//        }
-//    }
-
-//    private async Task UpdateUserList()
-//    {
-//        var userList = OnlineUsers.Keys.ToList();
-//        await Clients.All.SendAsync("UserListUpdated", userList);
-//    }
-
-//    public async Task AddContact(ContactRequest request)
-//    {
-//        var entity = new Contacts
-//        {
-//            ConnectionId = string.Empty,
-//            Name = request.Name,
-//            Email = request.Email,
-//            Status = "Online"
-//        };
-
-//        _contactRepository.Adicionar(entity);
-//        await _unitOfWork.SaveChangesAsync();
-//    }
-//}
-
-
-public class ChatHub : Hub
+public class ChatHub(IContactRepository contactRepository,
+    IUnitOfWork unitOfWork,
+    ApplicationDbContext context,
+    IChatMessageRepository chatMessageRepository) : Hub
 {
     // Email → ConnectionId
     private static readonly Dictionary<string, string> OnlineUsers = new();
-
-    private readonly IContactRepository _contactRepository;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly ApplicationDbContext _context;
-
-    public ChatHub(IContactRepository contactRepository, IUnitOfWork unitOfWork, ApplicationDbContext context)
-    {
-        _contactRepository = contactRepository;
-        _unitOfWork = unitOfWork;
-        _context = context;
-    }
 
     public async Task Register(string email)
     {
@@ -133,11 +23,11 @@ public class ChatHub : Hub
         OnlineUsers[email] = Context.ConnectionId;
 
         // Atualiza status no banco
-        var contact = await _context.Contacts.FirstOrDefaultAsync(c => c.Email == email);
+        var contact = await context.Contacts.FirstOrDefaultAsync(c => c.Email == email);
         if (contact != null)
         {
             contact.Status = "Online";
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
         }
 
         await BroadcastOnlineUsers();
@@ -151,11 +41,11 @@ public class ChatHub : Hub
         {
             OnlineUsers.Remove(email);
 
-            var contact = await _context.Contacts.FirstOrDefaultAsync(c => c.Email == email);
+            var contact = await context.Contacts.FirstOrDefaultAsync(c => c.Email == email);
             if (contact != null)
             {
                 contact.Status = "Offline";
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
             }
         }
 
@@ -163,17 +53,49 @@ public class ChatHub : Hub
         await base.OnDisconnectedAsync(exception);
     }
 
-    public async Task SendMessage(string from, string to, string message)
+    public async Task SendMessage(string from, string to, string message, string id)
     {
+        // Salva a mensagem no banco
+        var chatMessage = new ChatMessage
+        {
+            From = from,
+            To = to,
+            Message = message,
+            ContactId = Guid.Parse(id)
+        };
+        chatMessageRepository.Adicionar(chatMessage);
+        await unitOfWork.SaveChangesAsync();
+
+        var messageId = chatMessage.Id.ToString();
+
+        // Envia a mensagem para o destinatário
         if (OnlineUsers.TryGetValue(to, out var toConnectionId))
         {
-            await Clients.Client(toConnectionId).SendAsync("MessageReceived", from, to, message);
+            await Clients.Client(toConnectionId).SendAsync("MessageReceived", from, to, message, messageId);
         }
 
+        // Envia para o remetente também, para confirmação
         if (OnlineUsers.TryGetValue(from, out var fromConnectionId))
         {
-            await Clients.Client(fromConnectionId).SendAsync("MessageReceived", from, to, message);
+            await Clients.Client(fromConnectionId).SendAsync("MessageReceived", from, to, message, messageId);
         }
+    }
+
+    // Novo método para buscar mensagens
+    public async Task<List<ChatMessageResult>> GetMessageHistory(string user1, string user2)
+    {
+        return await context.ChatMessages
+            .Where(m =>
+                (m.From == user1 && m.To == user2) ||
+                (m.From == user2 && m.To == user1))
+            .OrderBy(m => m.DataCadastro)
+            .Select(x => new ChatMessageResult
+            {
+                From = x.From,
+                To = x.To,
+                Message = x.Message
+            })
+            .ToListAsync();
     }
 
     public async Task AddContact(ContactRequest request)
@@ -187,8 +109,11 @@ public class ChatHub : Hub
             OwnerEmail = request.OwnerEmail
         };
 
-        _contactRepository.Adicionar(entity);
-        await _unitOfWork.SaveChangesAsync();
+        contactRepository.Adicionar(entity);
+        await unitOfWork.SaveChangesAsync();
+
+        // Envia evento para clientes atualizarem a lista de contatos
+        await Clients.All.SendAsync("UserListUpdated");
     }
 
     private async Task BroadcastOnlineUsers()

@@ -10,6 +10,10 @@ public class ContactMap : IEntityTypeConfiguration<Contacts>
     {
         builder.HasKey(p => p.Id);
 
+        builder.HasMany(p => p.Messages)
+            .WithOne(m => m.Contact)
+            .HasForeignKey(p => p.ContactId);
+
         builder.ToTable("Contacts");
     }
 }

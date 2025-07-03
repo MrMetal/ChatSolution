@@ -1,13 +1,11 @@
 ﻿@page "/"
-
-@inject INotificationService NotificationService
-
 @using System.Security.Claims
 @using Microsoft.AspNetCore.SignalR.Client
 @using MobileChat.Components.Pages.Componentes
 @using Plugin.LocalNotification
 @using Shared.Results
 
+@inject INotificationService NotificationService
 
 <h1>Hello, @From!</h1>
 
@@ -62,36 +60,38 @@ Welcome to your new app.
                 await HubConnection.StartAsync();
             }
 
-            // Recebe status online dos usuários em tempo real
+            // Atualiza status online/offline
             HubConnection.On<List<string>>("UserStatusUpdated", onlineEmails =>
             {
                 foreach (var contact in _contacts)
                 {
-                    contact.Status = onlineEmails.Any(e => e.Equals(contact.Email, StringComparison.OrdinalIgnoreCase)) 
-                        ? "Online" 
+                    contact.Status = onlineEmails.Any(e => e.Equals(contact.Email, StringComparison.OrdinalIgnoreCase))
+                        ? "Online"
                         : "Offline";
                 }
-
                 InvokeAsync(StateHasChanged);
             });
 
+            // Atualiza lista de contatos
+            HubConnection.On("UserListUpdated", async () =>
+            {
+                _contacts = await Http
+                    .GetFromJsonAsync<List<ContactsResult>>($"https://localhost:7088/api/Contacts/GetAllContactsEndpoint/{From}") ?? new List<ContactsResult>();
+                
+                await InvokeAsync(StateHasChanged);
+            });
+
             var claims = new[] { new Claim(ClaimTypes.Name, From), new Claim("Email", "zoe@gmail.com") };
-            var claimsIdentity = new ClaimsIdentity( claims, "apiauth");
+            var claimsIdentity = new ClaimsIdentity(claims, "apiauth");
             var user = new ClaimsPrincipal(claimsIdentity);
             var authState = Task.FromResult(new AuthenticationState(user));
             HubConnection.On<string>("Authenticated", email => Console.WriteLine($"Connected as: {email}"));
 
             await HubConnection.SendAsync("Register", From);
 
-            // Busca contatos no banco
+            // Carrega lista inicial de contatos
             _contacts = await Http
                 .GetFromJsonAsync<List<ContactsResult>>($"https://localhost:7088/api/Contacts/GetAllContactsEndpoint/{From}") ?? [];
-
-            // Inicializa todos como Offline
-            foreach (var contact in _contacts)
-            {
-                contact.Status = "Offline";
-            }
         }
         catch (Exception ex)
         {
@@ -145,20 +145,10 @@ Welcome to your new app.
             var newContact = (ContactsResult)result.Data!;
             newContact.OwnerEmail = From;
 
-            // Salvar no servidor via SignalR
+            // Salva novo contato via SignalR
             await HubConnection.SendAsync("AddContact", newContact);
 
-            // Recarregar lista do backend para manter sincronização e status corretos
-            _contacts = await Http
-                .GetFromJsonAsync<List<ContactsResult>>($"https://localhost:7088/api/Contacts/GetAllContactsEndpoint/{From}") ?? [];
-
-            // Inicializa todos como Offline (status será atualizado via SignalR depois)
-            foreach (var contact in _contacts)
-            {
-                contact.Status = "Offline";
-            }
-
-            StateHasChanged();
+            // A lista será atualizada automaticamente via evento "UserListUpdated"
         }
     }
 }

@@ -1,7 +1,6 @@
 ﻿@page "/chat-contact/{To}/{Id}/{From}"
-
-@using Domain.Models
 @using Microsoft.AspNetCore.SignalR.Client
+@using Shared.Results
 
 <style>
 	/* Estilo do conteúdo para garantir que o rodapé não sobreponha o conteúdo */
@@ -79,11 +78,11 @@
 
 </style>
 
-<MudButton>Elizabeth</MudButton>
+<MudButton>@From</MudButton>
 
 <MudDivider />
 
-@foreach (var chatMessage in _message)
+@foreach (var chatMessage in _messages)
 {
 	<div class="@(chatMessage.IsMine ? "message right" : "message left")">
 		<div class="message-bubble">
@@ -96,7 +95,7 @@
 <div class="content">
 	<MudPaper Elevation="15" Class="d-flex flex-row px-2 mx-4 fixed-footer">
 		<MudTextField T="string" Placeholder="Enter your message..." DisableUnderLine="true" Class="mx-4"
-					  @bind-Value="_currentMessage" For="@(()=> _currentMessage)" />
+					  @bind-Value="_currentMessage" For="@(() => _currentMessage)" />
 		<MudButton OnClick="SendMessage" StartIcon="@Icons.Material.Outlined.Send" Color="Color.Primary" ButtonType="ButtonType.Button"></MudButton>
 	</MudPaper>
 </div>
@@ -104,49 +103,45 @@
 @code {
 	[CascadingParameter] public required HubConnection HubConnection { get; set; }
 	private string? _currentMessage;
-	[Parameter] public string From { get; set; }
-	[Parameter] public string To { get; set; }
-	[Parameter] public string Id { get; set; }
+	[Parameter] public string From { get; set; } = string.Empty;
+	[Parameter] public string To { get; set; } = string.Empty;
+	[Parameter] public string Id { get; set; } = string.Empty;
 
-	private bool IsOnChatPage;
+	private List<ChatMessageResult> _messages = new();
 
-	private readonly List<ChatMessage> _message = [];
-
-	protected override Task OnInitializedAsync()
+	protected override async Task OnInitializedAsync()
 	{
-		IsOnChatPage = true; // User is on the chat page
-
-
-		HubConnection.On<string, string, string>("MessageReceived", (from, to, message) =>
+		// Escuta por novas mensagens em tempo real
+		HubConnection.On<string, string, string, string>("MessageReceived", async (from, to, message, contactId) =>
 		{
-			var newMessage = new ChatMessage { From = from, To = to, Message = message, IsMine = from == From };
+			var newMessage = new ChatMessageResult
+			{
+				From = from,
+				To = to,
+				Message = message,
+				ContactId = Guid.Parse(contactId),
+				IsMine = from == From
+			};
 
-			_message.Add(newMessage);
-			InvokeAsync(StateHasChanged);
+			_messages.Add(newMessage);
+			await InvokeAsync(StateHasChanged);
 		});
 
-		return Task.CompletedTask;
-	}
-
-	protected override void OnAfterRender(bool firstRender)
-	{
-		base.OnAfterRender(firstRender);
-		if (firstRender)
+		// Carrega histórico ao iniciar
+		_messages = await HubConnection.InvokeAsync<List<ChatMessageResult>>("GetMessageHistory", From, To) ?? [];
+		foreach (var msg in _messages)
 		{
-			IsOnChatPage = true;
+			msg.IsMine = msg.From == From;
 		}
-	}
 
-	public void Dispose()
-	{
-		IsOnChatPage = false; // User left the chat page
+		await InvokeAsync(StateHasChanged);
 	}
 
 	private async Task SendMessage()
 	{
 		if (string.IsNullOrWhiteSpace(_currentMessage)) return;
 
-		await HubConnection.SendAsync("SendMessage", From, To, _currentMessage);
+		await HubConnection.SendAsync("SendMessage", From, To, _currentMessage, Id);
 		_currentMessage = string.Empty;
 	}
 }
