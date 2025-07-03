@@ -1,0 +1,30 @@
+﻿@using Shared.Results
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6">Novo Contato</MudText>
+
+        <MudTextField @bind-Value="contact.Name" Label="Nome" Required="true" />
+        <MudTextField @bind-Value="contact.Email" Label="Email" Required="true" />
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Submit" Color="Color.Primary">Salvar</MudButton>
+        <MudButton OnClick="Cancel" Color="Color.Secondary">Cancelar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    private ContactsResult contact = new();
+
+    private void Submit()
+    {
+        MudDialog.Close(DialogResult.Ok(contact));
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

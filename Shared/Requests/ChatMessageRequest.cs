@@ -1,6 +1,6 @@
-﻿namespace Domain.Models;
+﻿namespace Shared.Requests;
 
-public class ChatMessage : Entity
+public class ChatMessageRequest
 {
     public string From { get; init; }
     public string To { get; init; }
@@ -8,5 +8,4 @@ public class ChatMessage : Entity
     public bool IsMine { get; init; }
 
     public Guid ContactId { get; set; }
-    public Contacts Contact { get; set; }
 }

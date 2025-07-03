@@ -3,108 +3,162 @@
 @inject INotificationService NotificationService
 
 @using System.Security.Claims
-@using Domain.Models
 @using Microsoft.AspNetCore.SignalR.Client
+@using MobileChat.Components.Pages.Componentes
 @using Plugin.LocalNotification
+@using Shared.Results
+
 
 <h1>Hello, @From!</h1>
 
 Welcome to your new app.
 
-<MudList T="string" Dense="true">
-	@foreach (var contact in _contacts)
-	{
-		<MudList T="string">
-			<MudListItem OnClick="() => SelectContact(contact.Name, contact.Id)">
-				<AvatarContent>
-					<MudAvatar Color="Color.Tertiary">U</MudAvatar>
-				</AvatarContent>
-				<ChildContent>
-					@contact.Name
-				</ChildContent>             
-			</MudListItem>
-		</MudList>
-	}
+<MudList T="ContactsResult" Dense="true">
+    @foreach (var contact in _contacts)
+    {
+        <MudListItem OnClick="() => SelectContact(contact)">
+            <AvatarContent>
+                <MudAvatar Color="@GetStatusColor(contact.Status)">@contact.Name[0]</MudAvatar>
+            </AvatarContent>
+            <ChildContent>
+                <div>
+                    <b>@contact.Name</b> - <i>@contact.Status</i>
+                </div>
+            </ChildContent>
+        </MudListItem>
+    }
 </MudList>
 
-@if (!string.IsNullOrWhiteSpace(_selectedContact))
+@if (!string.IsNullOrWhiteSpace(_selectedContactEmail))
 {
-	<MudButton OnClick="GoToChat">Go To Chat With @_selectedContact ()</MudButton>
+    <MudButton OnClick="GoToChat">Go To Chat With @_selectedContactName ()</MudButton>
 }
-
 
 <MudButton OnClick="SendNotification">Send Notification</MudButton>
 
+<MudButton Color="Color.Primary" OnClick="OpenAddContactDialog">Adicionar Contato</MudButton>
 
 @code
 {
-	private string _selectedContact = string.Empty;
-	private Guid _id;
-	private const string From = "Zoe";
-	[CascadingParameter] public required HubConnection HubConnection { get; set; }
-	private ClaimsPrincipal _currentUser = new(new ClaimsIdentity());
-	private bool _isAuthenticated;
-	
-	private List<Contacts> _contacts = [];
+    private string _selectedContactEmail = string.Empty;
+    private string _selectedContactName = string.Empty;
+    private Guid _selectedContactId;
+    [Parameter] public string From { get; set; } = string.Empty;
 
-	protected override async Task OnInitializedAsync()
-	{
-		try
-		{
-			if (HubConnection.State == HubConnectionState.Disconnected)
-			{
-				await HubConnection.StartAsync();
-			}
+    [CascadingParameter] public required HubConnection HubConnection { get; set; }
 
-			_contacts.Add(new Contacts{Name = "Anna"});
-			_contacts.Add(new Contacts{Name = "Evangeline"});
+    private List<ContactsResult> _contacts = [];
 
-			var claimsIdentity = new ClaimsIdentity([new Claim(ClaimTypes.Name, From)], "apiauth");
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        var queryParams = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        From = queryParams["user"] ?? "zoe@gmail.com";
 
-			_currentUser = new ClaimsPrincipal(claimsIdentity);
-		
-			// Update contact list
-			HubConnection.On<List<string>>("UserListUpdated", usernames =>
-			{
-				var contact = usernames
-					.Where(u => u != From) // Exclude self
-					.Select(u => new Contacts { Name = u });
+        try
+        {
+            if (HubConnection.State == HubConnectionState.Disconnected)
+            {
+                await HubConnection.StartAsync();
+            }
 
-				_contacts.AddRange(contact.ToList());
+            // Recebe status online dos usuários em tempo real
+            HubConnection.On<List<string>>("UserStatusUpdated", onlineEmails =>
+            {
+                foreach (var contact in _contacts)
+                {
+                    contact.Status = onlineEmails.Any(e => e.Equals(contact.Email, StringComparison.OrdinalIgnoreCase)) 
+                        ? "Online" 
+                        : "Offline";
+                }
 
-				InvokeAsync(StateHasChanged);
-			});
+                InvokeAsync(StateHasChanged);
+            });
 
-			await HubConnection.SendAsync("Register", From);
-		}
-		catch (Exception e)
-		{
-			Console.WriteLine(e);
-		}
-	}
+            var claims = new[] { new Claim(ClaimTypes.Name, From), new Claim("Email", "zoe@gmail.com") };
+            var claimsIdentity = new ClaimsIdentity( claims, "apiauth");
+            var user = new ClaimsPrincipal(claimsIdentity);
+            var authState = Task.FromResult(new AuthenticationState(user));
+            HubConnection.On<string>("Authenticated", email => Console.WriteLine($"Connected as: {email}"));
 
-	private void SelectContact(string contactName, Guid id)
-	{
-		_selectedContact = contactName;
-		_id = id;
-		StateHasChanged();
-	}
+            await HubConnection.SendAsync("Register", From);
 
-	private void GoToChat() => NavigationManager.NavigateTo($"/chat-contact/{_selectedContact}/{_id}/{From}");
-	
+            // Busca contatos no banco
+            _contacts = await Http
+                .GetFromJsonAsync<List<ContactsResult>>($"https://localhost:7088/api/Contacts/GetAllContactsEndpoint/{From}") ?? [];
 
-	private void SendNotification()
-	{
-		NotificationService.Show(new NotificationRequest
-		{
-			NotificationId = 1,
-			Title = "New Message from",
-			Description = "Some description here",
-			Schedule = new NotificationRequestSchedule
-			{
-				NotifyTime = DateTime.Now.AddSeconds(5)
-			}
-		});
-	}
+            // Inicializa todos como Offline
+            foreach (var contact in _contacts)
+            {
+                contact.Status = "Offline";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro: {ex.Message}");
+        }
+    }
 
+    private void SelectContact(ContactsResult contact)
+    {
+        _selectedContactEmail = contact.Email;
+        _selectedContactName = contact.Name;
+        _selectedContactId = contact.Id;
+        StateHasChanged();
+    }
+
+    private void GoToChat()
+    {
+        if (!string.IsNullOrWhiteSpace(_selectedContactEmail))
+        {
+            NavigationManager.NavigateTo($"/chat-contact/{_selectedContactEmail}/{_selectedContactId}/{From}");
+        }
+    }
+
+    private static Color GetStatusColor(string status)
+        => status == "Online" ? Color.Success : Color.Default;
+
+    private void SendNotification()
+    {
+        NotificationService.Show(new NotificationRequest
+        {
+            NotificationId = 1,
+            Title = "New Message from",
+            Description = "Some description here",
+            Schedule = new NotificationRequestSchedule
+            {
+                NotifyTime = DateTime.Now.AddSeconds(2)
+            }
+        });
+    }
+
+    private async Task OpenAddContactDialog()
+    {
+        var parameters = new DialogParameters();
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+
+        var dialog = await DialogService.ShowAsync<AddContactDialog>("Adicionar Contato", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result!.Canceled)
+        {
+            var newContact = (ContactsResult)result.Data!;
+            newContact.OwnerEmail = From;
+
+            // Salvar no servidor via SignalR
+            await HubConnection.SendAsync("AddContact", newContact);
+
+            // Recarregar lista do backend para manter sincronização e status corretos
+            _contacts = await Http
+                .GetFromJsonAsync<List<ContactsResult>>($"https://localhost:7088/api/Contacts/GetAllContactsEndpoint/{From}") ?? [];
+
+            // Inicializa todos como Offline (status será atualizado via SignalR depois)
+            foreach (var contact in _contacts)
+            {
+                contact.Status = "Offline";
+            }
+
+            StateHasChanged();
+        }
+    }
 }

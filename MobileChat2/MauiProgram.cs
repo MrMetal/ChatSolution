@@ -20,6 +20,9 @@ namespace MobileChat2
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                 });
 
+            builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://localhost:7088/") });
+
+
             builder.Services.AddMudServices();
             builder.Services.AddMauiBlazorWebView();
 
